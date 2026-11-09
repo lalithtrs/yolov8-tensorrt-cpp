@@ -1,0 +1,10 @@
+# Python packages, pinned to the versions used for the published results (Kaggle T4, 2026-11-09).
+# torch and tensorrt are NOT listed: they depend on your CUDA version and are installed by
+# scripts/install_local.sh (local) or the notebook's install step (Kaggle).
+#   reference run: torch 2.11.0+cu130, tensorrt-cu13 10.16.1.11
+ultralytics==8.4.208
+onnx==1.23.2
+onnxslim
+pycocotools
+matplotlib
+pillow

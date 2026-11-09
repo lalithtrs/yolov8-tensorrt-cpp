@@ -1,0 +1,13 @@
+{
+  "trt_fp32_vs_pt_map_diff": 0.1,
+  "fp16_vs_fp32_map_diff": -0.02,
+  "int8_vs_fp32_map_diff": -3.43,
+  "int8_minmax_vs_fp32_map_diff": -1.79,
+  "speedup_fp32_vs_pt_fp32": 1.45,
+  "speedup_fp16_vs_pt_fp32": 3.4,
+  "speedup_int8_vs_pt_fp32": 4.38,
+  "fp16_baseline_cpu_share": 0.55,
+  "fp16_fast_copy_share": 0.154,
+  "int8_baseline_cpu_share": 0.587,
+  "int8_fast_copy_share": 0.198
+}

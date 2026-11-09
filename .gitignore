@@ -1,0 +1,12 @@
+build/
+engines/
+models/
+data/
+*.engine
+*.onnx
+*.pt
+*.calib.cache
+__pycache__/
+results/demo_input.mp4
+runs/
+.venv/

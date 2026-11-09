@@ -1,0 +1,7 @@
+{
+  "img_dir": "/tmp/coco/val2017",
+  "ann": "/tmp/coco/annotations/instances_val2017.json",
+  "n_eval": 4500,
+  "n_bench": 300,
+  "n_calib": 500
+}

@@ -1,0 +1,23 @@
+{
+  "fp32": {
+    "engine": "engines/yolov8s_fp32.engine",
+    "size_mb": 56.1,
+    "build_s": 83.3,
+    "trt": "10.16.1.11",
+    "calibrator": null
+  },
+  "fp16": {
+    "engine": "engines/yolov8s_fp16.engine",
+    "size_mb": 23.8,
+    "build_s": 276.4,
+    "trt": "10.16.1.11",
+    "calibrator": null
+  },
+  "int8": {
+    "engine": "engines/yolov8s_int8.engine",
+    "size_mb": 13.9,
+    "build_s": 765.8,
+    "trt": "10.16.1.11",
+    "calibrator": "entropy"
+  }
+}

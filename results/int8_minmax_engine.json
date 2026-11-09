@@ -1,0 +1,9 @@
+{
+  "int8": {
+    "engine": "engines/yolov8s_int8mm.engine",
+    "size_mb": 14.0,
+    "build_s": 728.1,
+    "trt": "10.16.1.11",
+    "calibrator": "minmax"
+  }
+}
