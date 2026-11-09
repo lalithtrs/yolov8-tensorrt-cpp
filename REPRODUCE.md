@@ -27,7 +27,7 @@ Can vary between runs:
 | Different GPU | absolute latency changes completely | compare **speedups** and **mAP**, not milliseconds |
 | Same GPU type, new engine build | TensorRT picks kernels by timing on the build machine, so two builds can differ slightly | small latency differences; FP32/FP16 mAP should stay within a few tenths of a point |
 | INT8 calibration | scales come from the calibration images and the build | INT8 mAP may move more than FP16; the tolerance used below is 1.0 point |
-| GPU power and clocks | the T4 is capped at 70 W and lowers its clock when kept busy (see `FINDINGS.md` F9); laptops also throttle on heat and battery | a few percent run to run; keep the machine on AC power and idle |
+| GPU power and clocks | the T4 is capped at 70 W and lowers its clock when kept busy (see finding 10 in `FINDINGS.md`); laptops also throttle on heat and battery | a few percent run to run; keep the machine on AC power and idle |
 | CPU | pre/post-processing run on the CPU | the CPU columns depend on your processor |
 | Newer Kaggle images | CUDA / PyTorch versions change over time | the exact TensorRT pin may not install; the notebook then uses the latest 10.x and records the version |
 
@@ -54,9 +54,9 @@ use that one to re-run.
 2. Settings: **Accelerator: GPU T4** (x1 or x2), **Internet: On** (phone-verified account).
 3. Optional: **Add Input** -> a COCO 2017 dataset (saves the ~1 GB download).
 4. **Run All**. `QUICK = True` in the first cell gives a ~20 min smoke run.
-5. Download `yolo-tensorrt-cpp-results.zip` from the Output panel, unzip, then compare:
+5. Download `yolov8-tensorrt-cpp-results.zip` from the Output panel, unzip, then compare:
    ```bash
-   python scripts/compare_results.py results <unzipped>/yolo-tensorrt-cpp/results
+   python scripts/compare_results.py results <unzipped>/yolov8-tensorrt-cpp/results
    ```
 
 ## C. Run on your own PC / laptop (GPU supported)
@@ -77,8 +77,8 @@ and `scripts/setup_cpp.py` finds their libraries and fetches the matching C++ he
 ### Step 1: get the code
 
 ```bash
-git clone https://github.com/<your-user>/yolo-tensorrt-cpp.git
-cd yolo-tensorrt-cpp
+git clone https://github.com/<your-user>/yolov8-tensorrt-cpp.git
+cd yolov8-tensorrt-cpp
 ```
 
 ### Step 2: system packages (once)

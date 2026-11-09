@@ -4,8 +4,9 @@ Every number below was measured in one Kaggle session: Tesla T4 (driver 580.178)
 TensorRT 10.16.1, PyTorch 2.11 (CUDA 13.0), Ultralytics 8.4.208, OpenCV 4.6 (C++). Batch 1, 640x640.
 Latency = median of 3 interleaved runs of 500 timed frames (after 50 warm-up) on 300 COCO images.
 mAP = COCO val2017, first 4500 images (INT8 calibrated on the other 500). Raw data: `results/`.
+The full run with every output: https://www.kaggle.com/code/lalithtrs/yolo-trt-kaggle
 
-## 1. Headline
+## Headline
 
 | Configuration | Total P50 | Total P95 | FPS | mAP50-95 | vs PyTorch FP32 |
 |---|---|---|---|---|---|
@@ -19,25 +20,25 @@ mAP = COCO val2017, first 4500 images (INT8 calibrated on the other 500). Raw da
 with no loss in mAP. For maximum speed, INT8 with MinMax calibration is a further 22% faster than FP16 for
 -1.8 mAP (entropy calibration cost -3.4 mAP at the same speed).
 
-## 2. Findings
+## Findings
 
-**F1. The C++ pipeline is numerically correct.** TensorRT FP32 scores 44.48 mAP vs 44.39 for PyTorch FP32
+**1. The C++ pipeline is numerically correct.** TensorRT FP32 scores 44.48 mAP vs 44.39 for PyTorch FP32
 (+0.10, target within 0.5). Preprocessing, box decoding, class-aware NMS and the COCO class mapping match.
 The small gain is plausibly from padding to a full 640x640 square (Ultralytics `predict` pads to a multiple of 32).
 
-**F2. TensorRT cuts model inference 4.7x at FP16 and 7.7x at INT8.** GPU inference: 11.83 ms (PyTorch FP32)
+**2. TensorRT cuts model inference 4.7x at FP16 and 7.7x at INT8.** GPU inference: 11.83 ms (PyTorch FP32)
 -> 7.33 (TRT FP32) -> 2.28-2.50 (TRT FP16) -> 1.53-1.83 ms (TRT INT8). Even at FP32 TensorRT is 1.6x faster,
 from layer fusion and kernel auto-tuning alone. FP16 is the biggest single step (about 3x over TRT FP32)
 because the T4's Tensor Cores need FP16 or INT8.
 
-**F3. FP16 costs no accuracy.** TRT FP16 vs FP32: -0.02 mAP50-95, identical per object size.
+**3. FP16 costs no accuracy.** TRT FP16 vs FP32: -0.02 mAP50-95, identical per object size.
 
-**F4. After TensorRT, the CPU became the bottleneck (the key finding).** In the straightforward C++ pipeline,
+**4. After TensorRT, the CPU became the bottleneck (the key finding).** In the straightforward C++ pipeline,
 CPU pre- plus postprocessing took **3.64 of 6.61 ms (55%) at FP16** and **3.65 of 6.22 ms (59%) at INT8**,
 more than the GPU (2.92 / 2.50 ms). Speeding up the model alone would have hit a wall: INT8's faster
 inference saved only 0.39 ms end to end (6.61 -> 6.22 ms).
 
-**F5. Optimising the CPU stages gave a 1.6-1.9x end-to-end speedup with identical output.**
+**5. Optimising the CPU stages gave a 1.6-1.9x end-to-end speedup with identical output.**
 - Preprocessing 2.34 -> 0.78 ms (3.0x): one fused pass (letterbox, BGR->RGB, /255, HWC->CHW) written straight
   into the pinned input buffer, instead of four OpenCV passes with temporaries.
 - Postprocessing 1.30 -> 0.29 ms (4.5x): class scores read row by row (contiguous, vectorised) instead of
@@ -45,7 +46,7 @@ inference saved only 0.39 ms end to end (6.61 -> 6.22 ms).
 - Total: FP16 6.61 -> 4.25 ms (-36%), INT8 6.22 -> 3.30 ms (-47%).
 - Verified: same 33,977 detections on 300 images, zero box or score difference.
 
-**F6. INT8 (entropy calibration, 500 images) loses 3.4 mAP, hitting small objects hardest.**
+**6. INT8 with entropy calibration (500 images) loses 3.4 mAP, hitting small objects hardest.**
 
 | Object size | FP32 | INT8 | Relative loss |
 |---|---|---|---|
@@ -55,9 +56,9 @@ inference saved only 0.39 ms end to end (6.61 -> 6.22 ms).
 | Large | 59.8 | 58.5 | -2.2% |
 
 INT8 also returned fewer confident detections (4.3 vs 6.1 per image above 0.25 confidence), so quantisation
-is lowering scores. That pattern points at range clipping in the detection head (tested in F6b).
+is lowering scores. That pattern points at range clipping in the detection head, tested in finding 7.
 
-**F6b. MinMax calibration halves the INT8 loss at the same speed.** Same 500 calibration images, same build
+**7. MinMax calibration halves the INT8 loss at the same speed.** Same 500 calibration images, same build
 settings, only the calibrator changed:
 
 | | FP32 | INT8 entropy | INT8 MinMax |
@@ -74,67 +75,51 @@ Entropy calibration picks a clipping range that minimises information loss for t
 rare large activations; MinMax keeps the full observed range. MinMax restored most of the missing confident
 detections (4.3 -> 5.8 per image vs 6.1 for FP32) and gained most on small objects, which supports the
 clipping explanation. The cost of covering the full range is coarser resolution for ordinary values, visible
-as a slightly lower large-object AP (-0.5). Speed is identical (3.30 ms, about 303 FPS); the remaining
-1.8-point gap is the target for mixed precision (P2).
+as a slightly lower large-object AP (-0.5). Speed is identical (3.30 ms, about 303 FPS).
 
-**F7. Host-device copies are now a visible cost.** H2D 0.43 ms + D2H 0.23 ms = 0.66 ms per frame: 15% of
+**8. Host-device copies are now a visible cost.** H2D 0.43 ms + D2H 0.23 ms = 0.66 ms per frame: 15% of
 the FP16 total and 20% of INT8. The input is copied as float32 (4.9 MB); uploading uint8 pixels (about 0.9 MB
 for a 640x480 image) and preprocessing on the GPU would remove most of it.
 
-**F8. INT8 shrinks the engine 4x.** FP32 56.1 MB, FP16 23.8 MB, INT8 13.9 MB (MinMax 14.0 MB). Build time grows
+**9. INT8 shrinks the engine 4x.** FP32 56.1 MB, FP16 23.8 MB, INT8 13.9 MB (MinMax 14.0 MB). Build time grows
 with precision search and calibration: 83 s, 276 s, 766 s (MinMax 728 s).
 
-**F9. Measurement caveats, stated honestly.**
-- *GPU clock drift, verified: the T4 is power-limited.* GPU inference was about 10% higher in the
-  optimised-CPU runs (FP16 2.28 -> 2.50 ms) although the GPU work is identical. A clock log during two
-  2000-frame FP16 runs (`results/gpu_clocks.csv`) shows why:
+**10. The T4 is power-limited, so GPU time depends on how busy the GPU is kept.** GPU inference was about
+10% higher in the optimised-CPU runs (FP16 2.28 -> 2.50 ms) although the GPU work is identical. A clock log
+during two 2000-frame FP16 runs (`results/gpu_clocks.csv`) shows why:
 
-  | Run | GPU busy share | SM clock (median) | Power (median) | Temp | Inference P50 |
-  |---|---|---|---|---|---|
-  | Baseline CPU path | 44% (2.90 of 6.60 ms) | **1590 MHz** (max boost) | 67.0 W | 65->74 C | 2.26 ms |
-  | Optimised CPU path | 74% (3.17 of 4.27 ms) | **1380 MHz** | 68.4 W | 73->78 C | 2.52 ms |
+| Run | GPU busy share | SM clock (median) | Power (median) | Temp | Inference P50 |
+|---|---|---|---|---|---|
+| Baseline CPU path | 44% (2.90 of 6.60 ms) | **1590 MHz** (max boost) | 67.0 W | 65->74 C | 2.26 ms |
+| Optimised CPU path | 74% (3.17 of 4.27 ms) | **1380 MHz** | 68.4 W | 73->78 C | 2.52 ms |
 
-  Both runs draw about the same power, right at the T4's 70 W limit. With the faster CPU path the GPU idles
-  less between frames, so to stay within 70 W the driver lowers the clock by 13% (1590 -> 1380 MHz), and
-  inference takes 12% longer (2.26 -> 2.52 ms), in line with the clock drop. Temperature is not the cause:
-  at the same 73-74 C the clock was 1575-1590 MHz in the baseline run and 1395-1410 MHz at the start of the
-  fast run. Practical meaning: on a power-capped GPU, per-frame GPU time depends on how busy the GPU is kept,
-  so benchmarks should report the duty cycle, and end-to-end latency is the number that matters.
+Both runs draw about the same power, right at the T4's 70 W limit. With the faster CPU path the GPU idles
+less between frames, so to stay within 70 W the driver lowers the clock by 13% (1590 -> 1380 MHz), and
+inference takes 12% longer (2.26 -> 2.52 ms), in line with the clock drop. Temperature is not the cause: at
+the same 73-74 C the clock was 1575-1590 MHz in the baseline run and 1395-1410 MHz at the start of the fast
+run. On a power-capped GPU, benchmarks should report the duty cycle, and end-to-end latency is the number
+that matters.
 
-  ![T4 clock during the two runs](results/gpu_clocks.png)
+![T4 clock during the two runs](results/gpu_clocks.png)
 
-- *Reproducibility.* The 2000-frame runs reproduce the 3x500-frame medians: baseline FP16 total 6.60 ms
-  (vs 6.61), optimised 4.27 ms (vs 4.25).
-- *Preprocessing tail.* The fused preprocessing has P95 = 2.2x its P50 (1.74 vs 0.78 ms) vs 1.2x before.
+## Measurement notes
+
+- **Reproducibility.** The 2000-frame runs reproduce the 3x500-frame medians: baseline FP16 total 6.60 ms
+  (vs 6.61), optimised 4.27 ms (vs 4.25). Run-to-run spread of total P50 across the 3 repeats was 0.01-0.76 ms.
+- **Preprocessing tail.** The fused preprocessing has P95 = 2.2x its P50 (1.74 vs 0.78 ms) vs 1.2x before.
   Likely cause: its cost now depends on the source image size (resize), while the old path was dominated by
   fixed 640x640 passes. Not verified.
-- PyTorch numbers come from Ultralytics `predict` (different letterbox, GPU NMS), so stage-by-stage
-  comparison with C++ is approximate; totals are the fair comparison.
-- Single session, single GPU type; run-to-run spread of total P50 was 0.01-0.76 ms.
+- **PyTorch comparison.** PyTorch numbers come from Ultralytics `predict` (different letterbox, GPU NMS), so
+  stage-by-stage comparison with C++ is approximate; totals are the fair comparison.
+- **Scope.** Single session, single GPU type (T4); each engine was built once, so build-to-build variation
+  was not measured. See `REPRODUCE.md` for what to expect on other hardware.
 
-## 3. Priorities
+## Future work
 
-**P0: finish and publish (do first)**
-1. Push the repo with `results/`, this file, the chart and the demo GIF; README results section is filled in.
-2. ~~Publish the Kaggle notebook~~ **Done**: https://www.kaggle.com/code/lalithtrs/yolo-trt-kaggle
-3. Resume bullet (measured numbers only):
-   > Built a C++/TensorRT inference pipeline for YOLOv8s on a T4: cut end-to-end latency from 14.5 ms to
-   > 4.25 ms (3.4x, 235 FPS) at FP16 with no mAP loss (44.5 COCO), and to 3.3 ms (4.4x, 303 FPS) at INT8;
-   > profiling showed CPU pre/post-processing was 55% of frame time after TensorRT, and a fused, vectorised
-   > CPU path cut it 3.4x with identical detections; diagnosed INT8 accuracy loss as calibration clipping and
-   > halved it (-3.4 -> -1.8 mAP) by switching to MinMax calibration.
-
-**P1: cheap experiments that strengthen the findings (about 30 min of Kaggle time)**
-4. ~~INT8 MinMax calibration~~ **Done** (F6b): -3.4 -> -1.8 mAP at the same speed.
-5. ~~Log GPU clocks to check throttling~~ **Done** (F9): power-limit throttling confirmed.
-
-**P2: the next engineering step (pick one)**
-6. GPU preprocessing kernel (upload uint8, letterbox + normalise in CUDA): removes the 0.78 ms CPU stage and
-   most of the 0.43 ms H2D copy. Upper bound about 1.1 of 3.3 ms at INT8.
-7. Pipelining: overlap frame N+1's CPU preprocessing with frame N's GPU work (two streams / double buffers).
-   Raises throughput (FPS) rather than single-frame latency.
-8. Close the remaining INT8 gap (-1.8 mAP with MinMax): keep the detection head in FP16 (mixed precision),
-   or explicit Q/DQ quantisation (NVIDIA ModelOpt). Goal: under 1 mAP drop while keeping most of the INT8 speed.
-
-**P3: nice to have**
-9. Batch > 1 throughput numbers; dynamic input shapes; Jetson port (rebuild engines on device).
+- **GPU preprocessing kernel** (upload uint8, letterbox + normalise in CUDA): removes the 0.78 ms CPU stage
+  and most of the 0.43 ms host-to-device copy, at most about 1.1 of the 3.3 ms INT8 frame.
+- **Pipelining:** overlap frame N+1's CPU preprocessing with frame N's GPU work (two streams, double
+  buffers). Raises throughput (FPS) rather than single-frame latency.
+- **Close the remaining INT8 gap** (-1.8 mAP with MinMax): keep the detection head in FP16 (mixed precision),
+  or use explicit Q/DQ quantisation (NVIDIA ModelOpt). Goal: under 1 mAP loss at close to INT8 speed.
+- **Broader coverage:** batch > 1 throughput, dynamic input shapes, a Jetson port (engines rebuilt on device).

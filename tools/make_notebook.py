@@ -8,7 +8,7 @@ import json
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-KREPO = '/kaggle/working/yolo-tensorrt-cpp'
+KREPO = '/kaggle/working/yolov8-tensorrt-cpp'
 FILES = ['CMakeLists.txt', 'src/hello_trt.cpp', 'src/main.cpp', 'scripts/coco_eval.py', 'scripts/setup_cpp.py',
          'scripts/collect_env.py', 'scripts/prepare_data.py', 'scripts/export_onnx.py', 'scripts/build_engine.py',
          'scripts/pytorch_baseline.py', 'scripts/run_trt.py', 'scripts/make_results.py', 'scripts/make_demo.py', 'scripts/plot_clocks.py',
@@ -51,7 +51,7 @@ This notebook does the whole project end to end and prints every result:
 4. **Run All.** Full run takes roughly 1–1.5 h. Set `QUICK = True` below for a ~20 min smoke run on fewer images.
 
 The run stops at the first failing step, with the error printed under that cell.
-All results land in `/kaggle/working/yolo-tensorrt-cpp/results/` and in `yolo-tensorrt-cpp-results.zip` (Output panel).
+All results land in `/kaggle/working/yolov8-tensorrt-cpp/results/` and in `yolov8-tensorrt-cpp-results.zip` (Output panel).
 """)
 
 code(f"""
@@ -229,7 +229,7 @@ display(Image(filename=f'{REPO}/results/demo.gif'))
 md("## Step 12: Package everything for GitHub")
 code("""
 import zipfile
-zpath = '/kaggle/working/yolo-tensorrt-cpp-results.zip'
+zpath = '/kaggle/working/yolov8-tensorrt-cpp-results.zip'
 skip_dirs = {'build', 'engines', 'models', '__pycache__'}
 with zipfile.ZipFile(zpath, 'w', zipfile.ZIP_DEFLATED) as z:
     for root, dirs, files in os.walk(REPO):
@@ -238,14 +238,14 @@ with zipfile.ZipFile(zpath, 'w', zipfile.ZIP_DEFLATED) as z:
             if fn == 'demo_input.mp4':
                 continue
             full = os.path.join(root, fn)
-            z.write(full, os.path.join('yolo-tensorrt-cpp', os.path.relpath(full, REPO)))
+            z.write(full, os.path.join('yolov8-tensorrt-cpp', os.path.relpath(full, REPO)))
 print('saved', zpath, round(os.path.getsize(zpath) / 1e6, 1), 'MB')
 print(open(f'{REPO}/results/summary.json').read())
 """)
 
 md("""
 ## Next steps
-1. Download `yolo-tensorrt-cpp-results.zip` from the Output panel (or *Save Version → Save & Run All* to keep a public run).
+1. Download `yolov8-tensorrt-cpp-results.zip` from the Output panel (or *Save Version → Save & Run All* to keep a public run).
 2. Paste `results/results.md` into the README's *Results* section, add `results/latency.png` and `results/demo.gif`.
 3. Push to GitHub and link this notebook from the README.
 4. Fill the resume bullet with the numbers from **Headline** above, only those.

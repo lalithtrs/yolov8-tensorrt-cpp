@@ -1,4 +1,4 @@
-# yolo-tensorrt-cpp
+# yolov8-tensorrt-cpp
 
 A C++ TensorRT inference pipeline for YOLOv8s, benchmarked against PyTorch at FP32 / FP16 / INT8,
 with per-stage latency (P50 / P95), FPS and COCO mAP, all measured on the same Kaggle T4.
@@ -155,7 +155,7 @@ REPRODUCE.md              how to reproduce (Kaggle or local GPU), expected varia
 - The TensorRT "GPU" column includes host-to-device and device-to-host copies; the breakdown table separates them.
 - The T4 is power-capped at 70 W: when the faster CPU path keeps the GPU busier (74% vs 44% of each frame),
   the clock drops from 1590 to 1380 MHz and GPU inference takes about 12% longer for the same work
-  (measured with `nvidia-smi`, see `FINDINGS.md` F9). End-to-end latency already includes this effect.
+  (measured with `nvidia-smi`, see finding 10 in `FINDINGS.md`). End-to-end latency already includes this effect.
 
 ## Limitations
 
